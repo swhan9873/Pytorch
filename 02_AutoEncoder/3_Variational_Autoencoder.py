@@ -41,6 +41,7 @@ class VAE(nn.Module):
         h1 = F.relu(self.Encoder(x))
         
         mu = self.fc1(h1)
+        # 여기서 왜 log variance (표준편차를 주는지 이해)
         logvar = self.fc2(h1)
         
         return mu, logvar
@@ -48,8 +49,13 @@ class VAE(nn.Module):
     
     def reparametrize(self,mu,logvar):
         
+        # 0.5를 곱하는 이유는 표준편차 variance가 log를 만나면 제곱이
+        # 아래로 내려오면서 2* log std 가 됨
+        # 따라서 1/2를 곱해주고 다시 exp 취해주면
+        # std 만 남음
         std = torch.exp(0.5*logvar)
         #std = logvar.mul(0.5).exp_()
+        
         """
         torch.randn_like(input) : 
         #Epsilon eps ~ N(0,1)
@@ -57,11 +63,11 @@ class VAE(nn.Module):
         from a normal distribution with mean 0 and variance 1
         
         """
-        eps = torch.randn_like(std)
+        epsilon = torch.randn_like(std)
         if use_gpu:
-            eps = eps.to(device)
+            epsilon = epsilon.to(device)
         #z1 = eps.mul(std).add_(mu)
-        z = mu + std*eps
+        z = mu + std*epsilon
         return z
     
     def decode(self,z):
@@ -131,6 +137,8 @@ def loss_function(reconstruction_function,recon_x,x,mu,logvar):
     
     """
     
+    # logvar 가 있어야 계산 할때 깔끔하게 할수있
+    
     BCE = reconstruction_function(recon_x,x) # binary cross entropy
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
@@ -141,6 +149,7 @@ def loss_function(reconstruction_function,recon_x,x,mu,logvar):
 def train(dataloader,model,reconstruction_function,optimizer,epoch):
     model.train()
     train_loss = 0
+    
     for batch_idx, (img, label) in enumerate(dataloader,0):
         img = img.view(img.shape[0],-1)
         if use_gpu:
