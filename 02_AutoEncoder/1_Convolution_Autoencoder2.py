@@ -47,6 +47,7 @@ class Encoder(nn.Module):
                 nn.Conv2d(128,256,3,padding=1), # b x 256 x 7 x 7
                 nn.ReLU()
         )
+        
     def forward(self,x):
         out = self.layer1(x)
         out = self.layer2(out)
@@ -70,7 +71,7 @@ class Decoder(nn.Module):
                 nn.ReLU(),
                 nn.BatchNorm2d(16),
                 nn.ConvTranspose2d(16,1,3,2,1,1), # batch x 1 x 28 x 28
-                nn.ReLU()
+                nn.ReLU(),
         )
         
     def forward(self,x):
@@ -163,7 +164,7 @@ if __name__ == '__main__':
     
     #check()
     
-    # initalization parameter
+    # initalize the parameters
     batch_size = 128
     num_epoch = 100
     learning_rate = 0.001
@@ -180,7 +181,7 @@ if __name__ == '__main__':
     
 
     
-    # bulid model
+    # define the models 
     encoder = Encoder()
     decoder = Decoder()
     
@@ -191,7 +192,6 @@ if __name__ == '__main__':
     # define the loss function and optimizer
     loss_func = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(),lr=learning_rate,weight_decay=1e-5)
-    
     
     train_loss_list = []
     
@@ -209,11 +209,6 @@ if __name__ == '__main__':
     plt.plot(np.arange(num_epoch), train_loss_list)
     plt.ylabel('loss')
     plt.show()
-    
-    
-    
-    
-    
     
     
     
