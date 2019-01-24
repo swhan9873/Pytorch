@@ -165,7 +165,7 @@ def main():
     model = CVAE(encoder,decoder).to(device)
     
     # define the loss function and optimizer with weight decay using L2 Norm
-    reconstruct_func = nn.BCELoss(reduction='sum')
+    reconstruct_func = nn.MSELoss(reduction='sum')
     optimizer = optim.Adam(model.parameters(),lr=learning_late,weight_decay=1e-5)
     
     test_loss_list = []
@@ -197,13 +197,13 @@ def main():
             print('saving model')
             
             state = {
-                'net':model.state_dict(),
-                'loss':test_loss,
-                'epoch':epoch
+                'net'   :model.state_dict(),
+                'loss'  :test_loss,
+                'epoch' :epoch
             }
             if not os.path.isdir('checkpoint'):
                 os.mkdir('checkpoint')
-            torch.save(state, './checkpoint/wook_1209.pth')
+            torch.save(state, './checkpoint/wook_0124.pth')
         
         # early stopping
         if iteration == limit:
@@ -324,31 +324,3 @@ if __name__ == '__main__':
     
     main()
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
