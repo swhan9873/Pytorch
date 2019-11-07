@@ -80,6 +80,7 @@ def spect_loader(path, window_size, window_stride, window, normalize, max_len=10
     spect = np.resize(spect, (1, spect.shape[0], spect.shape[1]))
     spect = torch.FloatTensor(spect)
 
+
     # z-score normalization
     if normalize:
         mean = spect.mean()
@@ -91,32 +92,73 @@ def spect_loader(path, window_size, window_stride, window, normalize, max_len=10
     return spect
 
 
-class SpeechDataset(data.Dataset):
-    """A google command data set loader where the wavs are arranged in this way: ::
-        root/one/xxx.wav
-        root/one/xxy.wav
-        root/one/xxz.wav
-        root/head/123.wav
-        root/head/nsdf3.wav
-        root/head/asd932_.wav
-    Args:
-        root (string): Root directory path.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-        window_size: window size for the stft, default value is .02
-        window_stride: window stride for the stft, default value is .01
-        window_type: typye of window to extract the stft, default value is 'hamming'
-        normalize: boolean, whether or not to normalize the spect to have zero mean and one std
-        max_len: the maximum length of frames to 
+def melspect_loader(wave_path,n_mels = 128, fmax = 8000, max_len= 50,normalize=True):
+    wave,sr = librosa.load(wave_path,mono=True)
+    melspect = librosa.feature.melspectrogram(y=wave,sr=sr,n_mels=n_mels,fmax=fmax)
+    
+    if melspect.shape[1] < max_len:
+        pad = np.zeros((melspect.shape[0], max_len - melspect.shape[1]))
+        #print('pad',pad,pad.shape)
+        melspect = np.hstack((melspect, pad))
+        #print('spect',melspect,melspect.shape)
+    elif melspect.shape[1] > max_len:
+        melspect = melspect[:max_len, ]
         
-     Attributes:
-        classes (list): List of the class names.
-        class_to_idx (dict): Dict with items (class_name, class_index).
-        spects (list): List of (spects path, class_index) tuples
-        STFT parameter: window_size, window_stride, window_type, normalize
-    """
+    melspect = np.resize(melspect, (1, melspect.shape[0], melspect.shape[1]))
+    melspect = torch.FloatTensor(melspect)
+    
+    
+        # z-score normalization
+    if normalize:
+        mean = melspect.mean()
+        std = melspect.std()
+        if std != 0:
+            melspect.add_(-mean)
+            melspect.div_(std)
+                  
+    return melspect
+
+class MelSpectrumDatasets(data.Dataset):
+    def __init__(self,root,transform= None,target_transform=None,n_mels = 128,fmax=8000,max_len=50,normalize=True):
+        classes, class_to_idx = find_classes(root)
+        melspects = make_dataset(root, class_to_idx)
+        if len(melspects) == 0:
+            raise (RuntimeError("Found 0 sound files in subfolders of: " + root + "Supported audio file extensions are: " + ",".join(AUDIO_EXTENSIONS)))
+        
+        self.root = root
+        self.melspects = melspects
+        self.classes = classes
+        self.class_to_idx = class_to_idx
+        self.transform = transform
+        self.target_transform = target_transform
+        self.loader = melspect_loader
+        self.n_mels = n_mels
+        self.fmax = fmax
+        self.max_len = max_len
+        self.normalize = normalize
+    def __getitem__(self, index):
+        
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (spect, target) where target is class_index of the target class.
+        """
+        
+        path, target = self.melspects[index]
+        melspects = self.loader(path, self.n_mels, self.fmax, self.max_len, self.normalize, )
+        if self.transform is not None:
+            melspects = self.transform(melspects)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return melspects, target
+        
+        
+    def __len__(self):
+        return len(self.melspects)
+ 
+class SpectrumDataset(data.Dataset):
 
     def __init__(self, root, transform=None, target_transform=None, window_size=.02,
                  window_stride=.01, window_type='hamming', normalize=True, max_len=101):
